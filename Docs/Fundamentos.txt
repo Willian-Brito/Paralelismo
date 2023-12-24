@@ -1,0 +1,300 @@
+
+
+# Programação Paralela
+A Programação Paralela é utilizada para dividir uma tarefa em diversas partes e executar estas partes de forma simultânea. (O Paralelismo significa realizar duas ou mais tarefas simultaneamente)
+
+# Programação Assíncrona
+A Programação Assíncrona permite gerenciar as threads dos processos de forma eficiente evitando que uma thread seja bloqueada enquanto aguarda o processamento de outra thread. Uma thread a menor unidade de tarefa que pode ser executada por um S.O. (A programação assincrona ocorre quando uma tarefa é executada, e você pode alternar para uma tarefa diferente sem esperar que a tarefa atual seja concluída, e, você faz isso sem imterromper (bloquear) a tarefa atual.)
+
+Asynchronous Programming Model (APM) - versão 1.0 da plataforma .NET
+Task Parallel Library (TPL) - versão 4.0 da plataforma .NET
+Implementação do LINQ com recursos para o paralelismo (PLINQ) - versão 4.0 da plataforma .NET
+async/await - C# 5.0
+
+
+Task Parallel Library (TPL) 
+* System.Threading 
+* System.Threading.Tasks
+* PLINQ (Implementação do LINQ com recursos para o paralelismo)
+
+
+# Tipos de Paralelismo
+
+[+] Paralelismo de dados
+ * Temos uma coleção de valores e desejamos usar a mesma operação em cada um dos elementos da coleção Ex: Filtrar elementos de um array
+
+[+] Paralelismo de tarefas
+ * Temos um conjunto de tarefas independentes que desejamos realizar em paralelo. Ex: Enviar um email e um arquivo
+
+
+# Quando Utilizar
+ * Quando tivermos uma grande quantidade de operações que dependam de processamento de CPU e possam ser executadas de maneira paralela quando houver mais de uma ocorrência de item a ser processado.
+
+Qunado Evitar ?
+ * Em operações simples que não usam muitos recursos de processamento.
+No ambiente web - aplicações ASP.NET Core
+
+*******************************************************************************************
+
+# Parallel
+
+[+] Opções de Uso: 
+* Parallel.Invoke => TaskFactory.StartNew ou Task().Start
+
+[+] Limitações da classe Parallel
+
+* Cria, mas não retorna objetos Task
+* O delegate Action é limitado - não tem parametro nem valor de retorno.
+* Não é flexível e sempre usa um método implicito Task.WaitAll.
+* Não garante a ordem de execução da tarefa.
+* Não retorna até que as tarefas fornecidas sejam concluídas (A duração é o tempo de execução gasto na tarefa mais longa).
+
+*******************************************************************************************
+
+# Task
+
+* Uma tarefa (task) é um grupo de declarações relacionadas que são executadas nas Threads.
+* A Classe Task pode ser considerada como uma abstração lógica de uma tarefa.
+* Ela Representa uma única operação que não retorna um valor e que geralmente é executada de forma assíncrona no pool de threads.
+
+[+] Executar mais de uma tarefa
+
+1- Aguardar todas as tarefas completarem usando o método Task.WaitAll (é o mesmo método utilizado pela classe Parallel por de baixo dos panos).
+2- Aguardar qualquer tarefa completar usando Task.WatAny.
+
+Ambos são métodos estáticos da classe Task e aceitam um array de tarefas como parâmetro.
+
+
+[+] Metodos Wait
+
+* Tenha cuidado ao usar os métodos Wait, WaitAll ou WaitAny.
+* Existe a possibilidade de você ter que esperar mais doque você prevê podendo até mesmo travar.
+* Considere usar sobrecargas destes métodos que incluem um parâmetro de tempo limite.
+
+
+[+] Método StartNew
+
+Obs: TaskScheduler é o responsavel por enfileirar as tarefas para que as threads do ThreadPool possam executalas a qualquer momento.
+
+1- cria o delegate action.
+2- inicia o delegate action.
+3- token de cancelamento.
+4- enumeração para controlar o comportamento da tarefa.
+5- Agendador de tarefa definido.
+
+StartNew(1- Action<Obj>, 2- Object, 3- CancellationToken, 4- TaskCreationOptions, 5- TaskScheduler);
+
+
+- TaskCreationOptions
+ * AttachedToParent - Especifica que uma tarefa seja anexada a uma tarefa pai na hierarquia de tarefas.
+ * DenyChildAttach - Especifica que uma tarefa filho anexada não poderá ser anexada à tarefa pai e será executada como uma tarefa filho desanexada.
+ * PreferFairness - É uma sugestão para o TaskSckeduler agendar ujma tarefa da forma mais justa possível.
+ * LongRunning - Especifica que uma tarefa será uma operação de execução longa e que ele merece uma thread dedicada.
+
+---------------------------------------
+
+[+] Método Run - Desenvolvido a partir da v4.5 do .NET
+
+Permite criar e executar uma tarefa em uma única chamada sendo a opção recomendada e mais leve para iniciar uma tarefa na programação paralela.
+
+Enfileira o trabalho especificado para a execução no ThreadPool e retorna uma tarefa ou identificador de Task<TResult> representando esse trabalho.
+
+[-] Inicia a tarefa com os seguintes valores
+
+1- O token de cancelamento é definifo como Cancel.Token.None (não vai ser cancelada).
+2- O valor da prorpiedade CreationOptions é TaskCreationOptions.DenyChildAttach (executa tarefas filhas desanexada).
+3- Usa o agendador de tarefas (TaskScheduler) padrão.
+
+
+0- A classe Task utiliza o método interno InternalStartNew() para chamar o método SheduleAndStart()
+	* Run() -> InternalStartNew() -> SheduleAndStart()
+
+---------------------------------------
+
+[-] Run com retorno
+
+ * A propriedade Result da classe Task contém o retorno da função executada.
+
+A propriedade Result contém os seguintes Status
+
+* RanToCompletion - A execução da tarefa foi concluída com sucesso.
+* Canceled - Indica que a tarefa confirmou o cancelamento e está lançando uma OperationCanceledException no CancellationToken
+* Created - Indica que a tarefa ainda não foi agendada apenas criada.
+* Running - Indica que a tarefa está em execução e não foi concluida.
+* WaitingForActivation - Indica que a tarefa está aguardando para ser ativada e agendada internamente.
+* WaitingForChildrenToComplete - Indica que a tarefa está finalizou a execução e está aguardando a conclusão das tarefas filhas que foram anexadas.
+* WaitingToRun - Indica que a tarefa foi agendada para execução, mas ainda não começou a ser executada. 
+* Faulted - Indica que a tarefa foi concluida devido a uma excessão sem tratamento.
+
+---------------------------------------
+
+[+] Método Start
+
+Inicia a task agendando-a para a execução no TaskScheduler atual.
+
+* Permite a possibilidade de iniciar e agendar a tarefa de forma manual
+
+# Ex:
+	var task = new Task(() => FazAlgumaCoisa()); // TaskStatus: Created
+	task.Start(); // TaskStatus: WaitingForActivation -> Running
+
+---------------------------------------
+
+# RESUMO dos Métodos StartNew(), Run(), Start()
+
+ * Task.Run() é uma abreviação de Task.StartNew(), porém com alguns valores padrões na inicialização, é atualmente a opção recomendada para criação e execução de tarefas mais simples.
+
+Task.Run(action) -> Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default)
+
+ * Task.StartNew() é mais robusto e oferece opções para poder definir a tarefa, utilizar apenas em uma ocasião especifica quando o TaskRun() não atender.
+ 
+ * Task.Start() deve ser evitado para iniciar e agendar tarefas, os cenários em que você deve utilizar seria quando você necessariamente precisa primeiro criar as tarefas e depois agendar de forma manual em alguma outra parte do código ou projeto.
+ 
+*******************************************************************************************
+ 
+# PLINQ - Parallel LINQ
+
+* PLINQ é a versão paralela do LINQ, o objetivo é maximizar a utilização do processador com maior rendimento em uma arquitetura multicore.
+* Com o PLINQ, as iterações são realizadas em paralelo, com as tarefas sendo agendadas em threads em execução no pool de threads da plataforma .NET
+* Para converter consultas LINQ para PLINQ, basta adicionar a cláusula AsParallel
+
+Consultas LINQ podem ter 2 comportamentos:
+1- Execução Deferred ou Adiada
+2- Execução Imediata
+
+O comportamento padrão do LINQ é realizar a execução adiada. A consulta não é executada até que os dados sejam realmente requisitados e acessados pela iteração e não quando ela é criada.
+
+--------------------------------------
+
+[+] Métodos 
+
+1- AsParallel() - Habilita a paralelização de ma consulta associando a consulta ao PLINQ.
+2- AsOrdered() - Permite ordenar o resultado da consulta segundo a ordem original.
+3- ForAll() - Invoca uma ação em paralelo para cada elemento da fonte de dados.
+4- ForEach() - Executa a ação foreach em paralelo.
+5- AsSequential() - COnverte ParallelQuery<T> para IEnumarable<T> forçando avaliação sequencial da consulta.
+
+
+# AsParallel: é o ponto de entrada para PLINQ e define que a consulta deve ser processada em paralelo dividindo o trabalho em cada processador ou núcleo.
+
+Nesta abordagem a chamada do método AsParallel() é adicionada na fonte de dados. Isso faz com que as iterações sejam espaçjhadas pelos processadores e núcleos disponiveis, neste cenário a ordem dos elementos não é presevada.
+
+var alunos = Aluno.GetAlunos();
+var resultado = alunos.AsParallel().Where(aluno => aluno.Nome.StartsWith("C"));
+
+foreach(var aluno in resultado) {
+	Console.WriteLine($"{aluno.Nome} - {aluno.Idade}");
+}
+
+Para preservar a ordem dos elementos o ideal é utilizar o método AsOrdered(), com isso a ordem do resultado segue conforme a sequência da origem.
+var resultado = alunos.AsParallel().AsOrdered().Where(aluno => aluno.Nome.StartsWith("C"));
+
+Este metodo não apresenta grandes resultados em todos os tipos de consultas. Para pequenas coleções ele é mais lento que a consulta normal.
+
+--------------------------------------
+
+# ForEach 
+
+O método estático ForEach da classe Parallel executa iterações em um laço em paralelo processando múltiplas iterações ao mesmo tempo em diferentes processadores. É indicado para acelerar iterações na qual uma operação independente e custosa precisa ser executada para cada entrada de uma sequencia.
+Porém essa abordagem podem acarretar problemas de sincronização, e assim, este método é mais indicado para processos em que cada iteração é independente das outras. (Não é adequado para operações I/O).
+
+Podemos restringir o numero de threads simultâneos criadas durante a execução de loops paralelos usando a propriedade MaxDegreeOfParallelism. Atribuindo um valor a MaxDegreeOfParallelism podemos restringir o grau de simultaneidade e restringir o numero de núcleos de processador a serem usadis pelos laços.
+
+O valor padrão desta propriedade é -1, o que siginifica que não existe restrição para operações em execução simultanea.
+
+
+- Problemas
+
+* Uma consulta PLINQ retorna um tipo ParallelQuery<T> que representa míltiplos streams de dados. O método Parallel.ForEach(), no entanto, espera apenas um único stream de dados que pe então analisadp em vários streams. Desta forma o método Parallel.ForEach() precisa reconhecer e converter a entrada dos streams múltiplos em um único stream, E para realizar esta conversão existe um custo de processamento.
+
+* A solução é usar método ParallelQuery<T>.ForAll que aceita diretamente vários fluxos, evitando a sobrecarga do método Parallel.ForEach.
+
+--------------------------------------
+
+# ForAll
+
+O método de extensão estático ForAll da classe Parallel invoca em paralelo a ação especificada para cada elemento da fonte de dados aceitando diretamente múltiplos streams evitando assim alguns dos problemas do método Parallel.Foreach
+
+Usar ForAll() é uma maneira eficiente de processar a saída de uma consulta paralelizada porque ele permite que os resultados sejam processados paralelamente sem primeiro mesclarem-se de volta para thread consumidora.
+
+--------------------------------------
+
+# AsSequential
+
+Método de extensão estático que converte ParallelQuery<T> em um IEnumerable<T> para forçar a avaliação sequencial da consulta.
+
+A cláusula AsSequential é o oposto da cláusula AsParallel pois serializa partes da sua consulta LINQ desfazendo o paralelismo.
+
+--------------------------------------
+
+# AsOrdered
+
+O método AsOrdered permite o tratamento de uma fonte de dados como se estivesse ordenada, substituindo o padrão PLINQ de não ordenado.
+
+--------------------------------------
+
+# Opção de Mesclagem PLINQ
+
+Buffer é uma região de memória física utilizada para armazenar temporariamente os dados enquanto eles estão sendo movidos de um lugar para outro.
+
+* Operadores, como AsOrdered(), que impõe uma nova ordem aos resultados devem armazenar em buffer todos os elementos em todas as threads antes de juntar.
+* O operador ForAll() não armazena os resultados em buffer, mas produz todos os  itens de todas as tarefas assim que processados.
+* Os demais operadores fazem com que o resultado seja parcialmente armazenado em buffer gerando os resultados em lote.
+
+[-] Indicando a opção Mesclagem (Juntar)
+
+Podemos usar o méodo WithMergeOptions, para indicar ao PLINQ o tipo de mesclagem que deverá ser executada e como o buffer vai ser usado. Se a opção de, mesclagem indicada não for suportada pela consulta ela será ignorada.
+
+Por padrão não precisamos fazer a indicação de mesclagem.
+
+
+[-] As opções de mesclagem são fornecidas pela enumeração ParallelMergeOptions:
+
+* NotBuffered: Faz com que cada elemento processado seja retornado de cada thread assim que dor produzido (ForAll). Essa opção começa a gerar os resultados da consulta assim que estiverem disponiveis, pode ser que tempo total dos resultados seja maior que outras opções.
+
+* AutoBuffered (Default): Faz com que a consulta colete os elementos em um buffer e, em seguida, gere periodicamente todo o conteúdo do buffer de uma vez para o thread de consumo. Essa opção pode demorar que a NotBuffered para disponibilizar o primeiro elemento da consulta.
+
+* FullyBuffered: Faz com que a saída de toda consulta seja armazenada em buffer, antes que qualquer um dos elementos seja gerado (OrderBy, AsOrdered). Essa opção pode fazer com que o primeiro elemento possa demorar mais para ficar disponível na consulta, porém o resultado completo com todos elementos pode ser mais rápido para ficar disponível.
+
+
+[-] Métodos que possui suporte as opção de mesclagem do buffer: 
+
+ * AsEnumerable
+ * OfType
+ * Skip
+ * Cast
+ * Reverse(*)
+ * Take
+ * Concat(*)
+ * Select
+ * Where
+ * DefaultIfEmpty
+ * SelectMany
+
+--------------------------------------
+
+# Grau de Paralelismo
+
+O grau de paralelismo é um numero inteiro sem sinal que indica o numero maximo de preocessadores que sua consulta PLINQ deve aproveitar em execução. Isso representa o número máximo de tarefas que seriam executas simultaneamente para processar a consulta.
+
+O valor padrão do grau de paralelismo nas consultas PLINQ é 64, o que implica que a PLINQ pode usar no máximo 64 processadores do sistema onde está em execução.
+
+Podemos alterar esse valor usando o método WithDegreeOfParallelism()
+
+var resultado = alunos.AsParallel().WithDegreeOfParallelism(2).Where(aluno => aluno.Nome.StartsWith("C"));
+
+--------------------------------------
+
+
+laço foreach = 54,4356745 segs
+laço Parallel.ForEach = 21,0064886 segs
+laço ForAll = 20,3082935 segs
+
+
+laço foreach = 54,9273146 segs
+laço Parallel.ForEach = 23,8408282 segs
+laço ForAll = 23,3458103 segs
+
+
+
+
